@@ -52,15 +52,15 @@ class OllamaEmbeddingService : public EmbeddingServiceInterface {
 };
 
 // Example: Custom proprietary embedding service
-// Endpoint format: local://localhost:8080/digitalmirror/embed
+// Endpoint format: local://localhost:8080/custom/embed
 //
 // Your custom API format:
 //   POST /embed
 //   {"text": "content", "model": "custom-model-v1"}
 //   Returns: {"embeddings": [0.1, 0.2, ...]}
-class DigitalMirrorEmbeddingService : public EmbeddingServiceInterface {
+class CustomEmbeddingService : public EmbeddingServiceInterface {
  public:
-  explicit DigitalMirrorEmbeddingService(const EmbeddingConfig& config);
+  explicit CustomEmbeddingService(const EmbeddingConfig& config);
 
   absl::StatusOr<std::vector<float>> GetEmbedding(
       absl::string_view text) override;
@@ -68,7 +68,7 @@ class DigitalMirrorEmbeddingService : public EmbeddingServiceInterface {
   absl::StatusOr<std::vector<std::vector<float>>> GetEmbeddings(
       const std::vector<std::string>& texts) override;
 
-  std::string GetServiceType() const override { return "digitalmirror"; }
+  std::string GetServiceType() const override { return "CustomEmbeddingService"; }
 
  private:
   EmbeddingConfig config_;
@@ -80,7 +80,7 @@ class DigitalMirrorEmbeddingService : public EmbeddingServiceInterface {
 std::unique_ptr<EmbeddingServiceInterface> CreateOllamaService(
     const EmbeddingConfig& config);
 
-std::unique_ptr<EmbeddingServiceInterface> CreateDigitalMirrorService(
+std::unique_ptr<EmbeddingServiceInterface> CreateCustomService(
     const EmbeddingConfig& config);
 
 }  // namespace google::spanner::emulator::backend

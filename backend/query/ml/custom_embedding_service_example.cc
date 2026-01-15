@@ -130,10 +130,10 @@ OllamaEmbeddingService::GetEmbeddings(const std::vector<std::string>& texts) {
 }
 
 //==============================================================================
-// DigitalMirrorEmbeddingService Implementation
+// CustomEmbeddingService Implementation
 //==============================================================================
 
-DigitalMirrorEmbeddingService::DigitalMirrorEmbeddingService(
+CustomEmbeddingService::CustomEmbeddingService(
     const EmbeddingConfig& config)
     : config_(config) {
   // Optional: Read API key from environment variable
@@ -143,18 +143,18 @@ DigitalMirrorEmbeddingService::DigitalMirrorEmbeddingService(
   }
 }
 
-absl::StatusOr<std::vector<float>> DigitalMirrorEmbeddingService::GetEmbedding(
+absl::StatusOr<std::vector<float>> CustomEmbeddingService::GetEmbedding(
     absl::string_view text) {
   std::vector<std::string> texts = {std::string(text)};
   ZETASQL_ASSIGN_OR_RETURN(auto embeddings, GetEmbeddings(texts));
   if (embeddings.empty()) {
-    return absl::InternalError("No embeddings returned from DigitalMirror");
+    return absl::InternalError("No embeddings returned from Custom service");
   }
   return embeddings[0];
 }
 
 absl::StatusOr<std::vector<std::vector<float>>>
-DigitalMirrorEmbeddingService::GetEmbeddings(
+CustomEmbeddingService::GetEmbeddings(
     const std::vector<std::string>& texts) {
   // Parse host and port from base URL
   std::string url = config_.base_url;
@@ -206,7 +206,7 @@ DigitalMirrorEmbeddingService::GetEmbeddings(
 
     if (response->status != 200) {
       return absl::UnavailableError(
-          absl::StrCat("DigitalMirror returned error: HTTP ", response->status,
+          absl::StrCat("Custom embedding service returned error: HTTP ", response->status,
                       " - ", response->body));
     }
 
@@ -232,7 +232,7 @@ DigitalMirrorEmbeddingService::GetEmbeddings(
       embedding_array = ref.GetMember("embedding");
     } else {
       return error::LocalEmbeddingInvalidResponse(
-          "Unrecognized response format from DigitalMirror");
+          "Unrecognized response format from Custom embedding service");
     }
 
     if (!embedding_array.IsArray()) {
@@ -266,9 +266,9 @@ std::unique_ptr<EmbeddingServiceInterface> CreateOllamaService(
   return std::make_unique<OllamaEmbeddingService>(config);
 }
 
-std::unique_ptr<EmbeddingServiceInterface> CreateDigitalMirrorService(
+std::unique_ptr<EmbeddingServiceInterface> CreateCustomService(
     const EmbeddingConfig& config) {
-  return std::make_unique<DigitalMirrorEmbeddingService>(config);
+  return std::make_unique<CustomEmbeddingService>(config);
 }
 
 }  // namespace google::spanner::emulator::backend
