@@ -29,11 +29,25 @@
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "backend/common/case.h"
+#include "backend/query/ml/embedding_client.h"
+#include "backend/query/queryable_model.h"
+#include "common/config.h"
 #include "farmhash.h"
 #include "zetasql/base/ret_check.h"
 #include "zetasql/base/status_macros.h"
 
 namespace google::spanner::emulator::backend {
+
+namespace {
+
+constexpr absl::string_view kLocalEndpointPrefix = "local://";
+
+// Detects if an endpoint is a local endpoint (starts with "local://").
+bool IsLocalEndpoint(absl::string_view endpoint) {
+  return absl::StartsWith(endpoint, kLocalEndpointPrefix);
+}
+
+}  // namespace
 
 absl::StatusOr<uint64_t> Fingerprint(const zetasql::Value& value) {
   if (value.is_null()) {
@@ -183,6 +197,20 @@ absl::Status ModelEvaluator::Predict(
     const zetasql::Model* model,
     const CaseInsensitiveStringMap<const ModelColumn>& model_inputs,
     CaseInsensitiveStringMap<ModelColumn>& model_outputs) {
+  // Cast to QueryableModel to access backend model properties
+  const auto* queryable_model = dynamic_cast<const QueryableModel*>(model);
+  if (queryable_model != nullptr) {
+    const auto* backend_model = queryable_model->GetWrappedModel();
+    if (backend_model != nullptr && backend_model->endpoint().has_value()) {
+      const std::string& endpoint = backend_model->endpoint().value();
+
+      // Check if this is a local endpoint
+      if (IsLocalEndpoint(endpoint)) {
+        return LocalPredict(endpoint, model_inputs, model_outputs);
+      }
+    }
+  }
+
   // Custom model prediction logic can be added here.
   return DefaultPredict(model, model_inputs, model_outputs);
 }
@@ -203,8 +231,128 @@ absl::Status ModelEvaluator::PgPredict(
     absl::string_view endpoint, const zetasql::JSONValueConstRef& instance,
     const zetasql::JSONValueConstRef& parameters,
     zetasql::JSONValueRef prediction) {
+  // Check if this is a local embedding endpoint
+  if (IsLocalEndpoint(endpoint)) {
+    return LocalPgPredict(endpoint, instance, parameters, prediction);
+  }
+
   // Custom model prediction logic can be added here.
   return DefaultPgPredict(endpoint, instance, parameters, prediction);
+}
+
+absl::Status ModelEvaluator::LocalPredict(
+    absl::string_view endpoint,
+    const CaseInsensitiveStringMap<const ModelColumn>& model_inputs,
+    CaseInsensitiveStringMap<ModelColumn>& model_outputs) {
+  // Create embedding client configuration from flags
+  EmbeddingConfig config;
+  config.base_url = config::local_embedding_service_url();
+  config.embedding_dimensions = config::local_embedding_dimensions();
+  config.timeout_ms = config::local_embedding_timeout_ms();
+
+  EmbeddingClient client(config);
+
+  // Extract text input from model_inputs
+  // Look for a column named "content", "text", or the first STRING column
+  std::string input_text;
+  bool found_input = false;
+
+  for (const auto& [name, column] : model_inputs) {
+    const zetasql::Value* value = column.value;
+    if (value->type()->IsString()) {
+      input_text = value->string_value();
+      found_input = true;
+      break;
+    }
+  }
+
+  if (!found_input) {
+    return absl::InvalidArgumentError(
+        "No STRING input column found for embedding generation");
+  }
+
+  // Get embedding from service
+  ZETASQL_ASSIGN_OR_RETURN(std::vector<float> embedding, client.GetEmbedding(input_text));
+
+  // Convert to ARRAY<FLOAT32> and set in model_outputs
+  for (auto& [name, column] : model_outputs) {
+    const zetasql::Type* output_type = column.model_column->GetType();
+
+    if (output_type->IsArray()) {
+      const zetasql::ArrayType* array_type = output_type->AsArray();
+      const zetasql::Type* element_type = array_type->element_type();
+
+      if (element_type->IsFloat() || element_type->IsDouble()) {
+        // Convert embedding to ZetaSQL values
+        std::vector<zetasql::Value> elements;
+        elements.reserve(embedding.size());
+
+        for (float f : embedding) {
+          if (element_type->IsFloat()) {
+            elements.push_back(zetasql::Value::Float(f));
+          } else {
+            elements.push_back(zetasql::Value::Double(static_cast<double>(f)));
+          }
+        }
+
+        *column.value = zetasql::Value::MakeArray(array_type, elements).value();
+        return absl::OkStatus();
+      }
+    }
+  }
+
+  return absl::InvalidArgumentError(
+      "Model output must be ARRAY<FLOAT32> or ARRAY<FLOAT64> for embeddings");
+}
+
+absl::Status ModelEvaluator::LocalPgPredict(
+    absl::string_view endpoint,
+    const zetasql::JSONValueConstRef& instance,
+    const zetasql::JSONValueConstRef& parameters,
+    zetasql::JSONValueRef prediction) {
+  // Create embedding client configuration from flags
+  EmbeddingConfig config;
+  config.base_url = config::local_embedding_service_url();
+  config.embedding_dimensions = config::local_embedding_dimensions();
+  config.timeout_ms = config::local_embedding_timeout_ms();
+
+  EmbeddingClient client(config);
+
+  // Extract text input from instance JSON
+  std::string input_text;
+
+  if (instance.IsString()) {
+    input_text = instance.GetString();
+  } else if (instance.IsObject()) {
+    // Look for "content", "text", or first string member
+    for (const auto& [key, value] : instance.GetMembers()) {
+      if (value.IsString()) {
+        input_text = value.GetString();
+        break;
+      }
+    }
+  }
+
+  if (input_text.empty()) {
+    return absl::InvalidArgumentError(
+        "No text input found in instance for embedding generation");
+  }
+
+  // Get embedding from service
+  ZETASQL_ASSIGN_OR_RETURN(std::vector<float> embedding, client.GetEmbedding(input_text));
+
+  // Build prediction result as JSON array
+  prediction.SetToEmptyObject();
+  zetasql::JSONValueRef embedding_array =
+      prediction.GetMember("embedding");
+  embedding_array.SetToEmptyArray();
+
+  for (float f : embedding) {
+    ZETASQL_RETURN_IF_ERROR(embedding_array.AppendArrayElement(
+        zetasql::JSONValue(static_cast<double>(f))));
+  }
+
+  return absl::OkStatus();
 }
 
 }  // namespace google::spanner::emulator::backend

@@ -420,6 +420,14 @@ absl::Status MlPredictRow_ModelEndpoint_InvalidBatchSize(int64_t value_num,
                                                          int64_t min_num,
                                                          int64_t max_num);
 absl::Status MlPredictRow_Args_NoInstances();
+
+// Local embedding errors.
+absl::Status LocalEmbeddingServiceUnavailable(absl::string_view url);
+absl::Status LocalEmbeddingServiceTimeout(absl::string_view url,
+                                          int timeout_ms);
+absl::Status LocalEmbeddingInvalidResponse(absl::string_view details);
+absl::Status LocalEmbeddingDimensionMismatch(int expected, int actual);
+
 absl::Status EmptyStruct();
 absl::Status StructFieldNumberExceedsLimit(int64_t limit);
 absl::Status MissingStructFieldName(absl::string_view struct_type);

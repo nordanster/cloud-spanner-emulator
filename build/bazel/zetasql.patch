@@ -637,3 +637,32 @@ index 6956e63..aae162f 100644
          rows_to_insert.erase(rows_to_insert.begin() + rows_ignored_indexes[i]);
        }
      }
+diff --git a/zetasql/public/types/type.h b/zetasql/public/types/type.h
+index orig..new 100644
+--- a/zetasql/public/types/type.h
++++ b/zetasql/public/types/type.h
+@@ -644,6 +644,12 @@
+     // error.
+     std::optional<int64_t> file_descriptor_sets_max_size_bytes = std::nullopt;
+   };
++
++  // Applicable to ProtoType only, used from ArrayType::EqualElementMultiSet and
++  // other call sites that depend on hashing.
++  // Returns true if the ProtoType has any floating point fields.
++  // Always returns false for instances which are not ProtoType.
++  virtual bool HasFloatingPointFields() const;
+ 
+  protected:
+   // Types can only be created and destroyed by TypeFactory.
+@@ -668,11 +674,6 @@
+   // built-in types should not update the hash state.
+   virtual absl::HashState HashTypeParameter(absl::HashState state) const = 0;
+ 
+-  // Applicable to ProtoType only, used from ArrayType::EqualElementMultiSet and
+-  // other call sites that depend on hashing.
+-  // Returns true if the ProtoType has any floating point fields.
+-  // Always returns false for instances which are not ProtoType.
+-  virtual bool HasFloatingPointFields() const;
+ 
+   // Internal implementation for Serialize methods.  This will append
+   // Type information to <type_proto>, so the caller should make sure

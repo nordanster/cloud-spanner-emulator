@@ -92,6 +92,9 @@ class QueryableModel : public zetasql::Model {
     return nullptr;
   }
 
+  // Get the wrapped backend Model
+  const backend::Model* GetWrappedModel() const { return wrapped_model_; }
+
  private:
   const backend::Model* const wrapped_model_;
   std::vector<std::unique_ptr<const QueryableModelColumn>> input_columns_;

@@ -54,6 +54,15 @@ int abort_current_transaction_probability();
 
 void set_abort_current_transaction_probability(int probability);
 
+// Returns the base URL for the local embedding service.
+std::string local_embedding_service_url();
+
+// Returns the number of dimensions for local embedding vectors.
+int local_embedding_dimensions();
+
+// Returns the timeout in milliseconds for local embedding service requests.
+int local_embedding_timeout_ms();
+
 }  // namespace config
 }  // namespace emulator
 }  // namespace spanner

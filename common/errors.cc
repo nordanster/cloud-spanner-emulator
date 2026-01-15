@@ -1903,6 +1903,33 @@ absl::Status MlPredictRow_Args_NoInstances() {
                       "must contain 'instances'");
 }
 
+absl::Status LocalEmbeddingServiceUnavailable(absl::string_view url) {
+  return absl::Status(
+      absl::StatusCode::kUnavailable,
+      absl::Substitute("Local embedding service unavailable at: $0", url));
+}
+
+absl::Status LocalEmbeddingServiceTimeout(absl::string_view url,
+                                          int timeout_ms) {
+  return absl::Status(
+      absl::StatusCode::kDeadlineExceeded,
+      absl::Substitute("Local embedding service timeout after $0ms at: $1",
+                       timeout_ms, url));
+}
+
+absl::Status LocalEmbeddingInvalidResponse(absl::string_view details) {
+  return absl::Status(
+      absl::StatusCode::kInvalidArgument,
+      absl::Substitute("Invalid embedding service response: $0", details));
+}
+
+absl::Status LocalEmbeddingDimensionMismatch(int expected, int actual) {
+  return absl::Status(
+      absl::StatusCode::kInvalidArgument,
+      absl::Substitute("Embedding dimension mismatch: expected $0, got $1",
+                       expected, actual));
+}
+
 absl::Status EmptyStruct() {
   return absl::Status(absl::StatusCode::kFailedPrecondition,
                       "Empty STRUCT is not allowed.");

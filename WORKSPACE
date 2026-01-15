@@ -265,6 +265,20 @@ http_archive(
 )
 
 http_archive(
+    name = "cpp_httplib",
+    build_file_content = """
+cc_library(
+    name = "httplib",
+    hdrs = ["httplib.h"],
+    visibility = ["//visibility:public"],
+    strip_include_prefix = ".",
+)""",
+    sha256 = "dcf6486d9030937636d8a4f820ca9531808fd7edb283893dddbaa05f99357e63",
+    strip_prefix = "cpp-httplib-0.14.3",
+    urls = ["https://github.com/yhirose/cpp-httplib/archive/v0.14.3.tar.gz"],
+)
+
+http_archive(
     name = "com_googlesource_code_riegeli",
     sha256 = "603c4d35224cf00f1d4a68c45cc4c5ca598613886886f93e1cffbe49a18aa6ea",
     strip_prefix = "riegeli-3966874f4ce0b05bb32ae184f1fb44411992e12d",
@@ -342,8 +356,13 @@ http_archive(
     name = "com_google_zetasql",
     patch_args = ["-p1"],
     patches = ["//build/bazel:zetasql.patch"],
+    patch_cmds = [
+        # Fix constexpr issue in value_inl.h
+        "sed -i 's/uint64_t raw_type() const { return type_; }/constexpr uint64_t raw_type() const { return type_; }/' zetasql/public/value_inl.h",
+    ],
     # Patches applied:
     # - Give visibility to ZetaSQL's base library to reuse some utilities
+    # - Fix constexpr issue with raw_type() method (applied via patch_cmds)
     sha256 = "29c67fd85b1a5890a14bddaa1f5757721506462ec9f2a33b429aef16f99d5cb8",
     strip_prefix = "zetasql-2025.09.1",
     url = "https://github.com/google/zetasql/archive/refs/tags/2025.09.1.zip",

@@ -21,12 +21,43 @@ package(
 )
 
 cc_library(
+    name = "embedding_service_interface",
+    hdrs = [
+        "embedding_service_interface.h",
+    ],
+    deps = [
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+    ],
+)
+
+cc_library(
+    name = "embedding_client",
+    srcs = ["embedding_client.cc"],
+    hdrs = ["embedding_client.h"],
+    deps = [
+        ":embedding_service_interface",
+        "//common:errors",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:str_format",
+        "@com_google_zetasql//zetasql/base:ret_check",
+        "@com_google_zetasql//zetasql/public:json_value",
+        "@cpp_httplib//:httplib",
+    ],
+)
+
+cc_library(
     name = "model_evaluator",
     srcs = ["model_evaluator.cc"],
     hdrs = ["model_evaluator.h"],
     deps = [
+        ":embedding_client",
         "//backend/common:case",
         "//backend/query:queryable_model",
+        "//common:config",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",

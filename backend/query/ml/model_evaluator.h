@@ -56,6 +56,20 @@ class ModelEvaluator {
                                 const zetasql::JSONValueConstRef& instance,
                                 const zetasql::JSONValueConstRef& parameters,
                                 zetasql::JSONValueRef prediction);
+
+ private:
+  // Local embedding prediction for GSQL dialect.
+  static absl::Status LocalPredict(
+      absl::string_view endpoint,
+      const CaseInsensitiveStringMap<const ModelColumn>& model_inputs,
+      CaseInsensitiveStringMap<ModelColumn>& model_outputs);
+
+  // Local embedding prediction for PG dialect.
+  static absl::Status LocalPgPredict(
+      absl::string_view endpoint,
+      const zetasql::JSONValueConstRef& instance,
+      const zetasql::JSONValueConstRef& parameters,
+      zetasql::JSONValueRef prediction);
 };
 
 }  // namespace google::spanner::emulator::backend

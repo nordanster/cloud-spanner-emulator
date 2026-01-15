@@ -51,6 +51,18 @@ ABSL_FLAG(
     "to the current transaction. A value of zero means that the emulator will "
     "never abort the current transaction.");
 
+ABSL_FLAG(std::string, local_embedding_service_url, "http://localhost:30106",
+          "Base URL for the local embedding service (e.g., "
+          "http://localhost:30106). When set, models with 'local://' endpoints "
+          "will use this service.");
+
+ABSL_FLAG(int, local_embedding_dimensions, 1024,
+          "Number of dimensions for local embedding vectors. "
+          "Supported range: 32-1024 for Qwen3-Embedding models.");
+
+ABSL_FLAG(int, local_embedding_timeout_ms, 30000,
+          "Timeout in milliseconds for local embedding service requests.");
+
 namespace google {
 namespace spanner {
 namespace emulator {
@@ -74,6 +86,18 @@ int abort_current_transaction_probability() {
 
 void set_abort_current_transaction_probability(int probability) {
   absl::SetFlag(&FLAGS_abort_current_transaction_probability, probability);
+}
+
+std::string local_embedding_service_url() {
+  return absl::GetFlag(FLAGS_local_embedding_service_url);
+}
+
+int local_embedding_dimensions() {
+  return absl::GetFlag(FLAGS_local_embedding_dimensions);
+}
+
+int local_embedding_timeout_ms() {
+  return absl::GetFlag(FLAGS_local_embedding_timeout_ms);
 }
 
 }  // namespace config
